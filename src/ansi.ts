@@ -1,18 +1,48 @@
 // oxlint-disable-next-line no-control-regex
-const ANSI_PATTERN = /\[[0-9;:]*[@-~]/g;
+const ANSI_PATTERN = /\x1b\[[0-9;:]*[@-~]/g;
 
 export function stripAnsi(value: string): string {
   return value.replace(ANSI_PATTERN, '');
 }
 
+function charWidth(codePoint: number): number {
+  if (codePoint < 0x20 || codePoint === 0x7f) return 0;
+  // Zero-width joiners, variation selectors.
+  if (
+    codePoint === 0xfe0f ||
+    (codePoint >= 0x200d && codePoint <= 0x200f) ||
+    (codePoint >= 0xfe00 && codePoint <= 0xfe0e)
+  )
+    return 0;
+  // Wide: CJK, emoji, fullwidth forms.
+  if (
+    (codePoint >= 0x1100 && codePoint <= 0x115f) ||
+    (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+    (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+    (codePoint >= 0xfe10 && codePoint <= 0xfe6f) ||
+    (codePoint >= 0xff01 && codePoint <= 0xff60) ||
+    (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+    (codePoint >= 0x1f000 && codePoint <= 0x1fbff) ||
+    (codePoint >= 0x20000 && codePoint <= 0x3ffff) ||
+    (codePoint >= 0xe0100 && codePoint <= 0xe01ef)
+  )
+    return 2;
+  return 1;
+}
+
 export function visibleLength(value: string): number {
-  return stripAnsi(value).length;
+  const stripped = stripAnsi(value);
+  let width = 0;
+  for (const ch of stripped) {
+    width += charWidth(ch.codePointAt(0)!);
+  }
+  return width;
 }
 
 /**
- * Truncate a string to `maxWidth` visible characters, preserving any ANSI
- * escape sequences encountered along the way. Sequences past the visible
- * cutoff are dropped. Ported from tmux.expose's `truncate_ansi` in ui.rs.
+ * Truncate a string to `maxWidth` visible terminal columns, preserving ANSI
+ * escape sequences. Accounts for wide characters (emoji, CJK).
  */
 export function truncateAnsi(value: string, maxWidth: number): string {
   if (maxWidth <= 0) {
@@ -33,7 +63,6 @@ export function truncateAnsi(value: string, maxWidth: number): string {
         output += next;
         i += 1;
         const code = next.charCodeAt(0);
-        // Final byte of CSI is in range @ (0x40) through ~ (0x7e).
         if (code >= 0x40 && code <= 0x7e) {
           break;
         }
@@ -41,13 +70,20 @@ export function truncateAnsi(value: string, maxWidth: number): string {
       continue;
     }
 
-    if (visible === maxWidth) {
+    const cp = value.codePointAt(i)!;
+    const w = charWidth(cp);
+    if (visible + w > maxWidth) {
       break;
     }
 
-    output += ch;
-    visible += 1;
-    i += 1;
+    if (cp > 0xffff) {
+      output += value[i]! + value[i + 1]!;
+      i += 2;
+    } else {
+      output += ch;
+      i += 1;
+    }
+    visible += w;
   }
 
   return output;
