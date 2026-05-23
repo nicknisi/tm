@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/nicknisi/tm/compare/v0.2.1...v0.3.0) (2026-05-23)
+
+
+### Features
+
+* add list view toggle with Tab key ([cf3bd57](https://github.com/nicknisi/tm/commit/cf3bd57f79af23942ceee433cdebbc85ba406003))
+
 ## [0.2.1](https://github.com/nicknisi/tm/compare/v0.2.0...v0.2.1) (2026-05-23)
 
 
