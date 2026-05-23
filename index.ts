@@ -1,5 +1,5 @@
 import packageJson from './package.json' with { type: 'json' };
-import { handleKey, handleMouse, parseKeyEvent } from './src/input.ts';
+import { handleKey, handleListMouse, handleMouse, parseKeyEvent } from './src/input.ts';
 import { App } from './src/model.ts';
 import { isMouseSequence, parseMouseEvent } from './src/mouse.ts';
 import { render } from './src/render.ts';
@@ -45,6 +45,7 @@ function handleCliFlags(argv: string[]): number | null {
         '  Type to filter    Live search by session name',
         '  Backspace         Delete a filter character',
         '  Enter             Switch (or create) the session',
+        '  Tab               Toggle between grid and list view',
         '  Ctrl-D            Kill the selected session',
         '  Mouse click       Switch to the clicked session',
         '  Esc               Clear filter, or quit if filter is empty',
@@ -224,16 +225,19 @@ async function main(): Promise<number> {
 
     const handleInput = (buf: Buffer) => {
       const size = getTerminalSize();
-      const gridArea = { x: 0, y: 0, width: size.cols, height: Math.max(0, size.rows - FOOTER_HEIGHT) };
+      const contentArea = { x: 0, y: 0, width: size.cols, height: Math.max(0, size.rows - FOOTER_HEIGHT) };
 
       if (isMouseSequence(buf)) {
         const mouse = parseMouseEvent(buf);
         if (mouse !== null) {
-          // Hit-test against the *currently visible* cards.
           const visible = app.visibleSessions();
           if (visible.length > 0) {
-            const grid = calculateGrid(gridArea, visible.length);
-            handleMouse(app, mouse, grid.cards);
+            if (app.viewMode === 'list') {
+              handleListMouse(app, mouse, contentArea);
+            } else {
+              const grid = calculateGrid(contentArea, visible.length);
+              handleMouse(app, mouse, grid.cards);
+            }
           }
           needsRender = true;
         }
@@ -241,8 +245,12 @@ async function main(): Promise<number> {
       }
 
       const key = parseKeyEvent(buf);
-      const grid = calculateGrid(gridArea, app.visibleSessionCount());
-      handleKey(app, key, grid.columns);
+      if (app.viewMode === 'list') {
+        handleKey(app, key, 1);
+      } else {
+        const grid = calculateGrid(contentArea, app.visibleSessionCount());
+        handleKey(app, key, grid.columns);
+      }
       needsRender = true;
     };
 

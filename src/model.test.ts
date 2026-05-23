@@ -112,6 +112,28 @@ describe('App', () => {
   });
 });
 
+describe('App.viewMode', () => {
+  test('defaults to grid', () => {
+    const app = new App([makeSession('one')], null);
+    expect(app.viewMode).toBe('grid');
+  });
+
+  test('toggles between grid and list', () => {
+    const app = new App([makeSession('one')], null);
+    app.toggleViewMode();
+    expect(app.viewMode).toBe('list');
+    app.toggleViewMode();
+    expect(app.viewMode).toBe('grid');
+  });
+
+  test('preserves selection across toggle', () => {
+    const app = new App([makeSession('one'), makeSession('two'), makeSession('three')], null);
+    app.selectedIndex = 2;
+    app.toggleViewMode();
+    expect(app.selectedIndex).toBe(2);
+  });
+});
+
 describe('fuzzyMatches', () => {
   test('matches subsequences', () => {
     expect(fuzzyMatches('backend-api', 'ba')).toBe(true);

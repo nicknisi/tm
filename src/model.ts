@@ -1,5 +1,5 @@
 import { fuzzyMatches } from './fuzzy.ts';
-import type { Session } from './types.ts';
+import type { Session, ViewMode } from './types.ts';
 
 export { fuzzyMatches };
 
@@ -12,6 +12,7 @@ export class App {
   shouldCreate: boolean;
   shouldDelete: boolean;
   error: string | null;
+  viewMode: ViewMode;
   private searchQuery: string | null;
 
   constructor(sessions: Session[], currentSessionName: string | null) {
@@ -22,6 +23,7 @@ export class App {
     this.shouldCreate = false;
     this.shouldDelete = false;
     this.error = null;
+    this.viewMode = 'grid';
     this.searchQuery = null;
 
     if (currentSessionName) {
@@ -145,5 +147,9 @@ export class App {
     if (currentRow < lastRow) {
       this.selectedIndex = Math.min(this.selectedIndex + cols, lastIndex);
     }
+  }
+
+  toggleViewMode(): void {
+    this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
   }
 }

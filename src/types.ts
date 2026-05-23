@@ -27,11 +27,14 @@ export interface TerminalSize {
   cols: number;
 }
 
+export type ViewMode = 'grid' | 'list';
+
 export type KeyEvent =
   | { type: 'char'; char: string }
   | { type: 'enter' }
   | { type: 'escape' }
   | { type: 'backspace' }
+  | { type: 'tab' }
   | { type: 'arrow'; direction: 'up' | 'down' | 'left' | 'right' }
   | { type: 'ctrl'; char: string }
   | { type: 'unknown' };

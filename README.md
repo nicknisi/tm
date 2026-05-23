@@ -1,7 +1,7 @@
 <h1 align="center">tm</h1>
 
 <p align="center">
-  Grid-based tmux session switcher with live pane previews.
+  tmux session switcher with live pane previews — grid or list view.
 </p>
 
 <p align="center">
@@ -11,9 +11,7 @@
 
 ## Why
 
-`tmux choose-tree` lists session names. That's it. `tm` shows you what's actually in each session — a grid of live pane previews — and lets you jump to one with the arrow keys.
-
-Inspired by macOS Mission Control and [`tmux.expose`](https://github.com/zerowidth/tmux.expose).
+`tmux choose-tree` lists session names. That's it. `tm` shows you what's actually in each session — a grid of live pane previews — and lets you jump to one with the arrow keys. Press Tab to toggle to a list view with a preview pane.
 
 ## Install
 
@@ -66,16 +64,19 @@ Then press `prefix + s` to open the switcher.
 
 | Key                | Action                                   |
 | ------------------ | ---------------------------------------- |
-| Arrow keys         | Move selection in the grid               |
+| Arrow keys         | Move selection                           |
 | Type any character | Live-filter sessions by name             |
 | Backspace          | Delete a filter character                |
-| Enter              | Switch to the selected session           |
+| Enter              | Switch to selected session (or create)   |
+| Tab                | Toggle between grid and list view        |
+| Mouse click        | Switch to the clicked session            |
+| Ctrl-D             | Kill the selected session                |
 | Esc                | Clear filter, or quit if filter is empty |
-| Ctrl-C / Ctrl-D    | Quit                                     |
+| Ctrl-C             | Quit                                     |
 
 ## How it works
 
-`tm` shells out to `tmux list-sessions` and `tmux capture-pane` for each session, lays out the previews in a grid that mirrors `tmux.expose`'s `calculate_grid` algorithm, and renders the whole thing with raw ANSI escape sequences — no TUI framework.
+`tm` shells out to `tmux list-sessions` and `tmux capture-pane` for each session, lays out the previews in an aspect-ratio-scored grid (or a scrollable list with a side preview pane), and renders the whole thing with raw ANSI escape sequences — no TUI framework.
 
 On `Enter`, it calls `tmux switch-client -t <session-id>` and exits.
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { handleKey, handleMouse } from './input.ts';
+import { handleKey, handleListMouse, handleMouse, parseKeyEvent } from './input.ts';
 import { App } from './model.ts';
 import type { KeyEvent, MouseEvent, Rect, Session } from './types.ts';
 
@@ -120,6 +120,71 @@ describe('handleMouse', () => {
   test('scroll events are ignored', () => {
     const app = new App([makeSession('a')], null);
     handleMouse(app, mouse('scroll-up', 1, 1), cards);
+    expect(app.shouldSwitch).toBe(false);
+  });
+});
+
+describe('parseKeyEvent - tab', () => {
+  test('tab byte returns tab event', () => {
+    const event = parseKeyEvent(Buffer.from([0x09]));
+    expect(event.type).toBe('tab');
+  });
+});
+
+describe('handleKey - tab toggles view mode', () => {
+  test('tab toggles from grid to list', () => {
+    const app = new App([makeSession('one')], null);
+    expect(app.viewMode).toBe('grid');
+    handleKey(app, key('tab'), 1);
+    expect(app.viewMode).toBe('list');
+  });
+
+  test('tab toggles during search mode', () => {
+    const app = new App([makeSession('one')], null);
+    app.startSearch();
+    app.pushSearchChar('o');
+    handleKey(app, key('tab'), 1);
+    expect(app.viewMode).toBe('list');
+    expect(app.isSearching()).toBe(true);
+  });
+});
+
+describe('handleKey - list mode navigation', () => {
+  test('up/down in list mode navigates one at a time', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);
+    app.viewMode = 'list';
+    handleKey(app, { type: 'arrow', direction: 'down' }, 1);
+    expect(app.selectedIndex).toBe(1);
+    handleKey(app, { type: 'arrow', direction: 'down' }, 1);
+    expect(app.selectedIndex).toBe(2);
+    handleKey(app, { type: 'arrow', direction: 'up' }, 1);
+    expect(app.selectedIndex).toBe(1);
+  });
+});
+
+describe('handleListMouse', () => {
+  function mouse(button: MouseEvent['button'], x: number, y: number, type: MouseEvent['type'] = 'press'): MouseEvent {
+    return { button, x, y, type };
+  }
+
+  const area: Rect = { x: 0, y: 0, width: 80, height: 20 };
+
+  test('left click on a row selects and switches', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);
+    handleListMouse(app, mouse('left', 5, 3), area);
+    expect(app.selectedIndex).toBe(2);
+    expect(app.shouldSwitch).toBe(true);
+  });
+
+  test('click outside session rows does nothing', () => {
+    const app = new App([makeSession('a'), makeSession('b')], null);
+    handleListMouse(app, mouse('left', 5, 15), area);
+    expect(app.shouldSwitch).toBe(false);
+  });
+
+  test('right click is ignored', () => {
+    const app = new App([makeSession('a')], null);
+    handleListMouse(app, mouse('right', 5, 1), area);
     expect(app.shouldSwitch).toBe(false);
   });
 });

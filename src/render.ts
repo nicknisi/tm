@@ -3,7 +3,7 @@ import { C } from './colors.ts';
 import { CARD_GAP, FOOTER_HEIGHT, calculateGrid } from './grid.ts';
 import { App } from './model.ts';
 import { moveCursor } from './terminal.ts';
-import type { Rect, Session, TerminalSize } from './types.ts';
+import type { Rect, Session, TerminalSize, ViewMode } from './types.ts';
 
 // Box-drawing chars.
 const BOX_PLAIN = {
@@ -28,6 +28,9 @@ export interface RenderContext {
   termSize: TerminalSize;
 }
 
+const LIST_PREVIEW_MIN_WIDTH = 80;
+const LIST_PANEL_RATIO = 0.35;
+
 /**
  * Render the full screen as a single string. Caller is responsible for writing
  * the result to stdout in one shot to avoid flicker.
@@ -37,10 +40,9 @@ export function render(app: App, termSize: TerminalSize): string {
   const rows = termSize.rows;
   const out: string[] = [];
 
-  // Clear screen + home.
   out.push('\x1b[2J\x1b[H');
 
-  const gridArea: Rect = {
+  const contentArea: Rect = {
     x: 0,
     y: 0,
     width: cols,
@@ -48,28 +50,34 @@ export function render(app: App, termSize: TerminalSize): string {
   };
 
   if (cols < 20 || rows < 6) {
-    out.push(renderCenteredMessage(gridArea, 'Terminal too small'));
+    out.push(renderCenteredMessage(contentArea, 'Terminal too small'));
     out.push(moveCursor(rows, 1));
-    out.push(renderFooter(app.searchText(), cols));
+    out.push(renderFooter(app.searchText(), cols, app.viewMode));
     return out.join('');
   }
 
   if (app.error) {
-    out.push(renderCenteredMessage(gridArea, app.error));
+    out.push(renderCenteredMessage(contentArea, app.error));
   } else if (app.sessions.length === 0 && !app.isCreateMode()) {
-    out.push(renderCenteredMessage(gridArea, 'No tmux sessions found.\nPress Esc or Ctrl-C to quit.'));
+    out.push(renderCenteredMessage(contentArea, 'No tmux sessions found.\nPress Esc or Ctrl-C to quit.'));
   } else if (app.isCreateMode()) {
-    const createName = app.pendingCreateName() ?? '';
-    const grid = calculateGrid(gridArea, 1);
-    const rect = grid.cards[0];
-    if (rect) {
-      out.push(renderCreateCard(createName, rect));
+    if (app.viewMode === 'list') {
+      out.push(renderListView(app, contentArea));
+    } else {
+      const createName = app.pendingCreateName() ?? '';
+      const grid = calculateGrid(contentArea, 1);
+      const rect = grid.cards[0];
+      if (rect) {
+        out.push(renderCreateCard(createName, rect));
+      }
     }
   } else if (app.visibleSessionCount() === 0) {
-    out.push(renderCenteredMessage(gridArea, 'No matching sessions'));
+    out.push(renderCenteredMessage(contentArea, 'No matching sessions'));
+  } else if (app.viewMode === 'list') {
+    out.push(renderListView(app, contentArea));
   } else {
     const visible = app.visibleSessions();
-    const grid = calculateGrid(gridArea, visible.length);
+    const grid = calculateGrid(contentArea, visible.length);
     for (let i = 0; i < grid.cards.length; i += 1) {
       const rect = grid.cards[i]!;
       const session = visible[i];
@@ -80,8 +88,121 @@ export function render(app: App, termSize: TerminalSize): string {
   }
 
   out.push(moveCursor(rows, 1));
-  out.push(renderFooter(app.searchText(), cols));
+  out.push(renderFooter(app.searchText(), cols, app.viewMode));
   return out.join('');
+}
+
+export function renderListView(app: App, area: Rect): string {
+  const out: string[] = [];
+  const visible = app.visibleSessions();
+  const selected = app.selectedSession();
+  const isCreate = app.isCreateMode();
+
+  const showPreview = area.width >= LIST_PREVIEW_MIN_WIDTH;
+  const listWidth = showPreview ? Math.max(20, Math.floor(area.width * LIST_PANEL_RATIO)) : area.width;
+  const previewWidth = showPreview ? area.width - listWidth - 1 : 0;
+
+  const scrollOffset = calculateScrollOffset(app.selectedIndex, area.height, visible.length + (isCreate ? 1 : 0));
+
+  for (let row = 0; row < area.height; row += 1) {
+    const itemIndex = row + scrollOffset;
+    out.push(moveCursor(area.y + row + 1, area.x + 1));
+
+    if (isCreate && itemIndex === 0) {
+      const createName = app.pendingCreateName() ?? '';
+      const isSelected = true;
+      const prefix = isSelected ? `${C.cyanBold}▸ ` : '  ';
+      const label = `Create: ${createName}`;
+      const line = `${prefix}${C.cyanBold}${truncate(label, listWidth - 3)}${C.reset}`;
+      out.push(line);
+      const lineLen = visibleLength(line);
+      if (lineLen < listWidth) out.push(' '.repeat(listWidth - lineLen));
+    } else if (itemIndex < visible.length + (isCreate ? 1 : 0)) {
+      const sessionIdx = isCreate ? itemIndex - 1 : itemIndex;
+      const session = visible[sessionIdx];
+      if (session) {
+        const isItemSelected = sessionIdx === app.selectedIndex && !isCreate;
+        const isCurrent = app.currentSessionName === session.name;
+        out.push(renderListRow(session, listWidth, isItemSelected, isCurrent));
+      }
+    } else {
+      out.push(' '.repeat(listWidth));
+    }
+
+    if (showPreview) {
+      out.push(`${C.gray}│${C.reset}`);
+      const previewSession = isCreate ? null : selected;
+      if (previewSession && row === 0) {
+        const title = ` ${previewSession.name} · ${previewSession.currentWindow ?? 'unknown'} · ${previewSession.windowCount} windows`;
+        out.push(`${C.cyan}${truncate(title, previewWidth)}${C.reset}`);
+        const titleLen = visibleLength(title);
+        if (titleLen < previewWidth) out.push(' '.repeat(previewWidth - titleLen));
+      } else if (previewSession && row === 1) {
+        out.push(`${C.gray}${('─').repeat(previewWidth)}${C.reset}`);
+      } else if (previewSession && row >= 2) {
+        const previewLine = row - 2;
+        if (previewSession.previewError !== null) {
+          if (previewLine === 0) {
+            const msg = ` Preview unavailable`;
+            out.push(`${C.red}${truncate(msg, previewWidth)}${C.reset}`);
+            const msgLen = visibleLength(msg);
+            if (msgLen < previewWidth) out.push(' '.repeat(previewWidth - msgLen));
+          } else {
+            out.push(' '.repeat(previewWidth));
+          }
+        } else if (previewSession.preview.length === 0) {
+          if (previewLine === 0) {
+            const msg = ` No visible content`;
+            out.push(`${C.gray}${truncate(msg, previewWidth)}${C.reset}`);
+            const msgLen = visibleLength(msg);
+            if (msgLen < previewWidth) out.push(' '.repeat(previewWidth - msgLen));
+          } else {
+            out.push(' '.repeat(previewWidth));
+          }
+        } else {
+          const maxPreviewLines = area.height - 2;
+          const start = Math.max(0, previewSession.preview.length - maxPreviewLines);
+          const pLine = previewSession.preview[start + previewLine];
+          if (pLine !== undefined) {
+            const rendered = ` ${truncateAnsi(pLine, previewWidth - 1)}${C.reset}`;
+            out.push(rendered);
+            const renderedLen = visibleLength(rendered);
+            if (renderedLen < previewWidth) out.push(' '.repeat(previewWidth - renderedLen));
+          } else {
+            out.push(' '.repeat(previewWidth));
+          }
+        }
+      } else {
+        out.push(' '.repeat(previewWidth));
+      }
+    }
+  }
+
+  return out.join('');
+}
+
+function renderListRow(session: Session, width: number, selected: boolean, isCurrent: boolean): string {
+  const prefix = selected ? `${C.yellowBold}▸ ` : '  ';
+  const nameColor = selected ? C.yellowBold : isCurrent ? C.greenBold : C.whiteBold;
+  const statusColor = session.attached ? C.greenBold : C.gray;
+  const status = session.attached ? 'attached' : 'detached';
+  const meta = ` ${C.gray}${session.windowCount}w${C.reset} ${statusColor}${status}${C.reset}`;
+  const metaVisible = ` ${session.windowCount}w ${status}`.length;
+
+  const nameSpace = Math.max(1, width - 2 - metaVisible - 1);
+  const name = truncate(session.name, nameSpace);
+  const pad = Math.max(0, nameSpace - visibleLength(name));
+
+  const line = `${prefix}${nameColor}${name}${C.reset}${' '.repeat(pad)}${meta}`;
+  return line;
+}
+
+function calculateScrollOffset(selectedIndex: number, viewHeight: number, totalItems: number): number {
+  if (totalItems <= viewHeight) return 0;
+  const half = Math.floor(viewHeight / 2);
+  if (selectedIndex <= half) return 0;
+  if (selectedIndex >= totalItems - half) return Math.max(0, totalItems - viewHeight);
+  return selectedIndex - half;
 }
 
 export function renderCard(session: Session, rect: Rect, selected: boolean, isCurrent: boolean): string {
@@ -237,20 +358,23 @@ function buildInteriorLines(session: Session, innerWidth: number, contentHeight:
   return lines.slice(0, contentHeight);
 }
 
-export function renderFooter(searchText: string | null, cols: number): string {
+export function renderFooter(searchText: string | null, cols: number, viewMode: ViewMode = 'grid'): string {
   const parts: string[] = [];
+  const modeLabel = viewMode === 'grid' ? 'list' : 'grid';
   if (searchText !== null) {
     parts.push(`${C.cyan}Search: ${searchText}${C.reset}`);
     parts.push(`${C.gray} · ${C.reset}`);
     parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
     parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch/create · ${C.reset}`);
     parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
+    parts.push(`${C.yellowBold}Tab${C.reset}${C.gray} ${modeLabel} · ${C.reset}`);
     parts.push(`${C.yellowBold}Esc${C.reset}${C.gray} clear${C.reset}`);
   } else {
     parts.push(`${C.gray}type to filter · ${C.reset}`);
     parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
     parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch · ${C.reset}`);
     parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
+    parts.push(`${C.yellowBold}Tab${C.reset}${C.gray} ${modeLabel} · ${C.reset}`);
     parts.push(`${C.yellowBold}Esc/Ctrl-C${C.reset}${C.gray} quit${C.reset}`);
   }
   const joined = parts.join('');

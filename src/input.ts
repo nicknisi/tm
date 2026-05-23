@@ -31,8 +31,7 @@ export function parseKeyEvent(data: Buffer): KeyEvent {
   if (first === 0x0d || first === 0x0a) return { type: 'enter' };
   // Backspace / DEL
   if (first === 0x7f || first === 0x08) return { type: 'backspace' };
-  // Tab is not handled — fall through to unknown for now
-  if (first === 0x09) return { type: 'unknown' };
+  if (first === 0x09) return { type: 'tab' };
 
   // Control characters (Ctrl-A..Ctrl-Z except CR/LF/Tab/BS handled above)
   if (first >= 0x01 && first <= 0x1a) {
@@ -68,6 +67,11 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
     if (app.selectedSession()) {
       app.shouldDelete = true;
     }
+    return;
+  }
+
+  if (key.type === 'tab') {
+    app.toggleViewMode();
     return;
   }
 
@@ -183,6 +187,35 @@ export function handleMouse(app: App, mouse: MouseEvent, cards: Rect[]): void {
       return;
     }
   }
+}
+
+export function handleListMouse(app: App, mouse: MouseEvent, contentArea: Rect): void {
+  if (mouse.button !== 'left' || mouse.type !== 'press') return;
+
+  const y = mouse.y - 1;
+  const visible = app.visibleSessions();
+  const totalItems = visible.length + (app.isCreateMode() ? 1 : 0);
+  const scrollOffset = calculateListScrollOffset(app.selectedIndex, contentArea.height, totalItems);
+  const itemIndex = y - contentArea.y + scrollOffset;
+
+  if (app.isCreateMode() && itemIndex === 0) {
+    app.shouldCreate = true;
+    return;
+  }
+
+  const sessionIdx = app.isCreateMode() ? itemIndex - 1 : itemIndex;
+  if (sessionIdx >= 0 && sessionIdx < visible.length) {
+    app.selectedIndex = sessionIdx;
+    app.shouldSwitch = true;
+  }
+}
+
+function calculateListScrollOffset(selectedIndex: number, viewHeight: number, totalItems: number): number {
+  if (totalItems <= viewHeight) return 0;
+  const half = Math.floor(viewHeight / 2);
+  if (selectedIndex <= half) return 0;
+  if (selectedIndex >= totalItems - half) return Math.max(0, totalItems - viewHeight);
+  return selectedIndex - half;
 }
 
 function contains(rect: Rect, x: number, y: number): boolean {
