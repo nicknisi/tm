@@ -35,3 +35,12 @@ export type KeyEvent =
   | { type: 'arrow'; direction: 'up' | 'down' | 'left' | 'right' }
   | { type: 'ctrl'; char: string }
   | { type: 'unknown' };
+
+export type MouseButton = 'left' | 'right' | 'middle' | 'scroll-up' | 'scroll-down' | 'other';
+
+export interface MouseEvent {
+  button: MouseButton;
+  x: number;
+  y: number;
+  type: 'press' | 'release' | 'move';
+}

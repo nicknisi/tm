@@ -69,6 +69,20 @@ describe('App', () => {
     expect(app.selectedSession()?.name).toBe('frontend');
   });
 
+  test('isCreateMode is true only when query is non-empty and matches nothing', () => {
+    const app = new App([makeSession('backend'), makeSession('frontend')], null);
+
+    expect(app.isCreateMode()).toBe(false);
+    app.startSearch();
+    expect(app.isCreateMode()).toBe(false); // empty query
+    app.pushSearchChar('z');
+    expect(app.isCreateMode()).toBe(true);
+    expect(app.pendingCreateName()).toBe('z');
+    app.popSearchChar();
+    app.pushSearchChar('b');
+    expect(app.isCreateMode()).toBe(false); // matches 'backend'
+  });
+
   test('clearing search restores all sessions', () => {
     const app = new App([makeSession('backend'), makeSession('frontend')], null);
 

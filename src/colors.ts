@@ -36,6 +36,9 @@ export const C = {
   get cyan() {
     return code('\x1b[0;36m');
   },
+  get cyanBold() {
+    return code('\x1b[1;36m');
+  },
   get yellow() {
     return code('\x1b[0;33m');
   },

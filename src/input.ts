@@ -1,5 +1,5 @@
 import { App } from './model.ts';
-import type { KeyEvent } from './types.ts';
+import type { KeyEvent, MouseEvent, Rect } from './types.ts';
 
 export function parseKeyEvent(data: Buffer): KeyEvent {
   if (data.length === 0) return { type: 'unknown' };
@@ -63,9 +63,11 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
     app.shouldQuit = true;
     return;
   }
-  // Ctrl-D also quits.
+  // Ctrl-D deletes the selected session (handled by main loop).
   if (key.type === 'ctrl' && key.char === 'd') {
-    app.shouldQuit = true;
+    if (app.selectedSession()) {
+      app.shouldDelete = true;
+    }
     return;
   }
 
@@ -79,7 +81,11 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
       app.shouldQuit = true;
       return;
     case 'enter':
-      app.shouldSwitch = true;
+      if (app.isCreateMode()) {
+        app.shouldCreate = true;
+      } else {
+        app.shouldSwitch = true;
+      }
       return;
     case 'arrow':
       switch (key.direction) {
@@ -115,7 +121,11 @@ function handleSearchKey(app: App, key: KeyEvent, columns: number): void {
       }
       return;
     case 'enter':
-      app.shouldSwitch = true;
+      if (app.isCreateMode()) {
+        app.shouldCreate = true;
+      } else {
+        app.shouldSwitch = true;
+      }
       return;
     case 'backspace':
       app.popSearchChar();
@@ -149,6 +159,34 @@ function pushFilterChar(app: App, ch: string): void {
     app.startSearch();
   }
   app.pushSearchChar(ch);
+}
+
+/**
+ * Hit-test a left-click against the grid cards. On hit, set selection and
+ * trigger switch. Other buttons/events are ignored.
+ *
+ * Coordinates from `parseMouseEvent` are 1-based (terminal convention).
+ * Grid `Rect` coordinates are 0-based (the renderer offsets +1 internally).
+ * Convert before testing.
+ */
+export function handleMouse(app: App, mouse: MouseEvent, cards: Rect[]): void {
+  if (mouse.button !== 'left' || mouse.type !== 'press') return;
+
+  const x = mouse.x - 1;
+  const y = mouse.y - 1;
+
+  for (let i = 0; i < cards.length; i += 1) {
+    const card = cards[i]!;
+    if (contains(card, x, y)) {
+      app.selectedIndex = i;
+      app.shouldSwitch = true;
+      return;
+    }
+  }
+}
+
+function contains(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height;
 }
 
 function moveLeftClamped(app: App, columns: number): void {

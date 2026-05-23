@@ -56,8 +56,15 @@ export function render(app: App, termSize: TerminalSize): string {
 
   if (app.error) {
     out.push(renderCenteredMessage(gridArea, app.error));
-  } else if (app.sessions.length === 0) {
+  } else if (app.sessions.length === 0 && !app.isCreateMode()) {
     out.push(renderCenteredMessage(gridArea, 'No tmux sessions found.\nPress Esc or Ctrl-C to quit.'));
+  } else if (app.isCreateMode()) {
+    const createName = app.pendingCreateName() ?? '';
+    const grid = calculateGrid(gridArea, 1);
+    const rect = grid.cards[0];
+    if (rect) {
+      out.push(renderCreateCard(createName, rect));
+    }
   } else if (app.visibleSessionCount() === 0) {
     out.push(renderCenteredMessage(gridArea, 'No matching sessions'));
   } else {
@@ -67,8 +74,8 @@ export function render(app: App, termSize: TerminalSize): string {
       const rect = grid.cards[i]!;
       const session = visible[i];
       if (!session) continue;
-      const currentAttached = session.attached && app.currentSessionName === session.name;
-      out.push(renderCard(session, rect, i === app.selectedIndex, currentAttached));
+      const isCurrent = app.currentSessionName === session.name;
+      out.push(renderCard(session, rect, i === app.selectedIndex, isCurrent));
     }
   }
 
@@ -77,13 +84,13 @@ export function render(app: App, termSize: TerminalSize): string {
   return out.join('');
 }
 
-export function renderCard(session: Session, rect: Rect, selected: boolean, currentAttached: boolean): string {
+export function renderCard(session: Session, rect: Rect, selected: boolean, isCurrent: boolean): string {
   if (rect.width < 4 || rect.height < 3) return '';
 
   const out: string[] = [];
   const box = selected ? BOX_DOUBLE : BOX_PLAIN;
-  const borderColor = selected ? C.yellowBold : currentAttached ? C.green : C.gray;
-  const titleColor = selected ? C.yellowBold : currentAttached ? C.greenBold : C.whiteBold;
+  const borderColor = selected ? C.yellowBold : isCurrent ? C.green : C.gray;
+  const titleColor = selected ? C.yellowBold : isCurrent ? C.greenBold : C.whiteBold;
 
   const innerWidth = rect.width - 2;
   const titleSpace = Math.max(0, innerWidth - 2);
@@ -138,6 +145,65 @@ export function renderCard(session: Session, rect: Rect, selected: boolean, curr
   return out.join('');
 }
 
+export function renderCreateCard(name: string, rect: Rect): string {
+  if (rect.width < 4 || rect.height < 3) return '';
+
+  const out: string[] = [];
+  const box = BOX_DOUBLE;
+  const borderColor = C.cyanBold;
+  const titleColor = C.cyanBold;
+
+  const innerWidth = rect.width - 2;
+  const titleSpace = Math.max(0, innerWidth - 2);
+  const titleText = `Create: ${name}`;
+  const title = truncate(titleText, Math.max(0, titleSpace - 2));
+  const titleSegment = `${box.h} ${titleColor}${title}${C.reset}${borderColor} `;
+  const titleVisible = visibleLength(`${box.h} ${title} `);
+  const remainingTop = Math.max(0, innerWidth - titleVisible);
+
+  out.push(moveCursor(rect.y + 1, rect.x + 1));
+  out.push(borderColor);
+  out.push(box.tl);
+  out.push(titleSegment);
+  out.push(box.h.repeat(remainingTop));
+  out.push(box.tr);
+  out.push(C.reset);
+
+  const contentHeight = rect.height - 2;
+  const message = ` Press Enter to create session "${name}"`;
+  const messageLine = truncate(message, innerWidth);
+  const lines: string[] = [];
+  // Spacer
+  lines.push('');
+  lines.push(`${C.gray}${messageLine}${C.reset}`);
+  while (lines.length < contentHeight) lines.push('');
+
+  for (let row = 0; row < contentHeight; row += 1) {
+    out.push(moveCursor(rect.y + 2 + row, rect.x + 1));
+    out.push(borderColor);
+    out.push(box.v);
+    out.push(C.reset);
+    const line = lines[row] ?? '';
+    out.push(line);
+    const lineWidth = visibleLength(line);
+    if (lineWidth < innerWidth) {
+      out.push(' '.repeat(innerWidth - lineWidth));
+    }
+    out.push(borderColor);
+    out.push(box.v);
+    out.push(C.reset);
+  }
+
+  out.push(moveCursor(rect.y + rect.height, rect.x + 1));
+  out.push(borderColor);
+  out.push(box.bl);
+  out.push(box.h.repeat(innerWidth));
+  out.push(box.br);
+  out.push(C.reset);
+
+  return out.join('');
+}
+
 function buildInteriorLines(session: Session, innerWidth: number, contentHeight: number): string[] {
   const lines: string[] = [];
   const previewWidthRaw = innerWidth - 2;
@@ -176,14 +242,15 @@ export function renderFooter(searchText: string | null, cols: number): string {
   if (searchText !== null) {
     parts.push(`${C.cyan}Search: ${searchText}${C.reset}`);
     parts.push(`${C.gray} · ${C.reset}`);
-    parts.push(`${C.yellowBold}Backspace${C.reset}${C.gray} edit · ${C.reset}`);
     parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
-    parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch · ${C.reset}`);
+    parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch/create · ${C.reset}`);
+    parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
     parts.push(`${C.yellowBold}Esc${C.reset}${C.gray} clear${C.reset}`);
   } else {
     parts.push(`${C.gray}type to filter · ${C.reset}`);
     parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
     parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch · ${C.reset}`);
+    parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
     parts.push(`${C.yellowBold}Esc/Ctrl-C${C.reset}${C.gray} quit${C.reset}`);
   }
   const joined = parts.join('');

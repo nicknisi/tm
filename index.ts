@@ -1,17 +1,29 @@
 import packageJson from './package.json' with { type: 'json' };
-import { handleKey, parseKeyEvent } from './src/input.ts';
+import { handleKey, handleMouse, parseKeyEvent } from './src/input.ts';
 import { App } from './src/model.ts';
+import { isMouseSequence, parseMouseEvent } from './src/mouse.ts';
 import { render } from './src/render.ts';
-import { enterAlternateScreen, enterRawMode, getTerminalSize, hideCursor, restore } from './src/terminal.ts';
 import {
+  enableMouse,
+  enterAlternateScreen,
+  enterRawMode,
+  getTerminalSize,
+  hideCursor,
+  restore,
+} from './src/terminal.ts';
+import {
+  attachSession,
   currentSessionId as getCurrentSessionId,
   currentSessionName as getCurrentSessionName,
+  killSession,
   listSessions,
+  newSession,
   switchClient,
 } from './src/tmux.ts';
 import { calculateGrid, FOOTER_HEIGHT } from './src/grid.ts';
 
 const VERSION: string = packageJson.version;
+const REFRESH_INTERVAL_MS = 500;
 
 function handleCliFlags(argv: string[]): number | null {
   if (argv.includes('--version') || argv.includes('-v')) {
@@ -32,9 +44,11 @@ function handleCliFlags(argv: string[]): number | null {
         '  Arrows            Move selection',
         '  Type to filter    Live search by session name',
         '  Backspace         Delete a filter character',
-        '  Enter             Switch to selected session',
+        '  Enter             Switch (or create) the session',
+        '  Ctrl-D            Kill the selected session',
+        '  Mouse click       Switch to the clicked session',
         '  Esc               Clear filter, or quit if filter is empty',
-        '  Ctrl-C / Ctrl-D   Quit',
+        '  Ctrl-C            Quit',
         '',
       ].join('\n'),
     );
@@ -68,16 +82,28 @@ async function main(): Promise<number> {
   enterAlternateScreen();
   hideCursor();
   enterRawMode();
+  enableMouse();
 
   const stdin = process.stdin;
-  stdin.setEncoding('utf8');
+  // Important: we receive raw bytes so mouse parsing works. Don't set utf8 encoding.
 
   let needsRender = true;
-  let exitCode = 0;
+  const exitCode = 0;
 
   const draw = () => {
     const size = getTerminalSize();
     process.stdout.write(render(app, size));
+  };
+
+  const refreshSessions = (): void => {
+    if (app.error) return;
+    try {
+      const sessions = listSessions(currentId);
+      app.replaceSessions(sessions);
+      needsRender = true;
+    } catch {
+      // Swallow refresh errors silently — next tick may succeed.
+    }
   };
 
   const tryHandleSwitch = (): boolean => {
@@ -100,24 +126,93 @@ async function main(): Promise<number> {
       enterAlternateScreen();
       hideCursor();
       enterRawMode();
+      enableMouse();
       needsRender = true;
       return false;
     }
   };
 
+  const tryHandleCreate = (): boolean => {
+    if (!app.shouldCreate) return false;
+    const name = app.pendingCreateName();
+    app.shouldCreate = false;
+    if (!name) return false;
+    try {
+      newSession(name);
+    } catch (err) {
+      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      needsRender = true;
+      return false;
+    }
+
+    // Switch to the new session. If we're outside tmux, attach instead.
+    try {
+      if (currentId !== null) {
+        // Inside tmux: switch the current client.
+        restore();
+        switchClient(name);
+      } else {
+        // Outside tmux: attach.
+        restore();
+        attachSession(name);
+      }
+      return true;
+    } catch (err) {
+      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      enterAlternateScreen();
+      hideCursor();
+      enterRawMode();
+      enableMouse();
+      needsRender = true;
+      return false;
+    }
+  };
+
+  const tryHandleDelete = (): void => {
+    if (!app.shouldDelete) return;
+    app.shouldDelete = false;
+    const session = app.selectedSession();
+    if (!session) return;
+    // Refuse to kill the session running tm.
+    if (currentId !== null && session.id === currentId) {
+      app.error = `Cannot kill the current session (running tm).\n\nPress Esc or Ctrl-C to quit, or any key to continue.`;
+      needsRender = true;
+      return;
+    }
+    try {
+      killSession(session.id);
+      // After killing, refresh the list immediately.
+      refreshSessions();
+    } catch (err) {
+      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      needsRender = true;
+    }
+  };
+
   return await new Promise<number>((resolve) => {
+    let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
     const finish = (code: number) => {
+      if (refreshTimer !== null) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+      }
       stdin.removeAllListeners('data');
       restore();
       resolve(code);
     };
 
     const tick = () => {
+      tryHandleDelete();
       if (needsRender) {
         draw();
         needsRender = false;
       }
       if (app.shouldQuit) {
+        finish(exitCode);
+        return;
+      }
+      if (tryHandleCreate()) {
         finish(exitCode);
         return;
       }
@@ -127,21 +222,57 @@ async function main(): Promise<number> {
       }
     };
 
-    stdin.on('data', (chunk: Buffer | string) => {
-      const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
-      const key = parseKeyEvent(buf);
+    const handleInput = (buf: Buffer) => {
       const size = getTerminalSize();
       const gridArea = { x: 0, y: 0, width: size.cols, height: Math.max(0, size.rows - FOOTER_HEIGHT) };
+
+      if (isMouseSequence(buf)) {
+        const mouse = parseMouseEvent(buf);
+        if (mouse !== null) {
+          // Hit-test against the *currently visible* cards.
+          const visible = app.visibleSessions();
+          if (visible.length > 0) {
+            const grid = calculateGrid(gridArea, visible.length);
+            handleMouse(app, mouse, grid.cards);
+          }
+          needsRender = true;
+        }
+        return;
+      }
+
+      const key = parseKeyEvent(buf);
       const grid = calculateGrid(gridArea, app.visibleSessionCount());
       handleKey(app, key, grid.columns);
       needsRender = true;
+    };
+
+    stdin.on('data', (chunk: Buffer | string) => {
+      const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
+      handleInput(buf);
       tick();
     });
 
     process.stdout.on('resize', () => {
+      // Clamp selection if the new grid is smaller (replaceSessions handles
+      // out-of-range index by clamping, but selection is by name preserved
+      // anyway). Just trigger a redraw — the renderer reads the new size.
       needsRender = true;
       tick();
     });
+
+    // Also handle SIGWINCH directly (process.stdout 'resize' covers most cases
+    // but SIGWINCH is the canonical signal).
+    process.on('SIGWINCH', () => {
+      needsRender = true;
+      tick();
+    });
+
+    refreshTimer = setInterval(() => {
+      refreshSessions();
+      if (needsRender) {
+        tick();
+      }
+    }, REFRESH_INTERVAL_MS);
 
     // Initial draw.
     tick();

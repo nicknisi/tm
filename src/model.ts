@@ -1,4 +1,7 @@
+import { fuzzyMatches } from './fuzzy.ts';
 import type { Session } from './types.ts';
+
+export { fuzzyMatches };
 
 export class App {
   sessions: Session[];
@@ -6,6 +9,8 @@ export class App {
   currentSessionName: string | null;
   shouldQuit: boolean;
   shouldSwitch: boolean;
+  shouldCreate: boolean;
+  shouldDelete: boolean;
   error: string | null;
   private searchQuery: string | null;
 
@@ -14,6 +19,8 @@ export class App {
     this.currentSessionName = currentSessionName;
     this.shouldQuit = false;
     this.shouldSwitch = false;
+    this.shouldCreate = false;
+    this.shouldDelete = false;
     this.error = null;
     this.searchQuery = null;
 
@@ -74,6 +81,20 @@ export class App {
     return this.searchQuery;
   }
 
+  /**
+   * True when the user has typed a non-empty search query that matches no
+   * session — in that case the UI shows a "Create: {query}" card and Enter
+   * should create the session rather than switch.
+   */
+  isCreateMode(): boolean {
+    return this.searchQuery !== null && this.searchQuery.length > 0 && this.visibleSessionCount() === 0;
+  }
+
+  pendingCreateName(): string | null {
+    if (!this.isCreateMode()) return null;
+    return this.searchQuery;
+  }
+
   replaceSessions(sessions: Session[]): void {
     const selectedName = this.selectedSession()?.name ?? null;
     this.sessions = sessions;
@@ -125,25 +146,4 @@ export class App {
       this.selectedIndex = Math.min(this.selectedIndex + cols, lastIndex);
     }
   }
-}
-
-export function fuzzyMatches(name: string, query: string): boolean {
-  const lowerQuery = query.toLowerCase();
-  if (lowerQuery.length === 0) return true;
-
-  const lowerName = name.toLowerCase();
-  let nameIdx = 0;
-  for (const queryCh of lowerQuery) {
-    let found = false;
-    while (nameIdx < lowerName.length) {
-      const nameCh = lowerName[nameIdx];
-      nameIdx += 1;
-      if (nameCh === queryCh) {
-        found = true;
-        break;
-      }
-    }
-    if (!found) return false;
-  }
-  return true;
 }
