@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/nicknisi/tm/compare/v0.2.0...v0.2.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* correct border alignment with wide characters and emoji ([27e998a](https://github.com/nicknisi/tm/commit/27e998adc1a680338d87be772cdafdea094bbb5a))
+* pass explicit GITHUB_TOKEN to release-please ([7ccdc3e](https://github.com/nicknisi/tm/commit/7ccdc3eedbcabc616634e550df7ea074e8824c1d))
+
 ## [0.2.0](https://github.com/nicknisi/tm/compare/v0.1.0...v0.2.0) (2026-05-23)
 
 
