@@ -1,3 +1,4 @@
+import packageJson from './package.json' with { type: 'json' };
 import { handleKey, parseKeyEvent } from './src/input.ts';
 import { App } from './src/model.ts';
 import { render } from './src/render.ts';
@@ -10,7 +11,42 @@ import {
 } from './src/tmux.ts';
 import { calculateGrid, FOOTER_HEIGHT } from './src/grid.ts';
 
+const VERSION: string = packageJson.version;
+
+function handleCliFlags(argv: string[]): number | null {
+  if (argv.includes('--version') || argv.includes('-v')) {
+    process.stdout.write(`tm ${VERSION}\n`);
+    return 0;
+  }
+  if (argv.includes('--help') || argv.includes('-h')) {
+    process.stdout.write(
+      [
+        'tm — grid-based tmux session switcher',
+        '',
+        'Usage:',
+        '  tm                Launch the session switcher TUI',
+        '  tm --version, -v  Print version and exit',
+        '  tm --help, -h     Show this help and exit',
+        '',
+        'Keybindings (inside the TUI):',
+        '  Arrows            Move selection',
+        '  Type to filter    Live search by session name',
+        '  Backspace         Delete a filter character',
+        '  Enter             Switch to selected session',
+        '  Esc               Clear filter, or quit if filter is empty',
+        '  Ctrl-C / Ctrl-D   Quit',
+        '',
+      ].join('\n'),
+    );
+    return 0;
+  }
+  return null;
+}
+
 async function main(): Promise<number> {
+  const cliResult = handleCliFlags(process.argv.slice(2));
+  if (cliResult !== null) return cliResult;
+
   let currentName: string | null = null;
   let currentId: string | null = null;
   let app: App;
