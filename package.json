@@ -1,0 +1,28 @@
+{
+  "name": "tm",
+  "version": "0.1.0",
+  "description": "Mission Control-style tmux session switcher",
+  "module": "index.ts",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "tm": "./dist/tm"
+  },
+  "scripts": {
+    "dev": "bun run index.ts",
+    "build": "bun build --compile --minify index.ts --outfile dist/tm",
+    "lint": "oxlint",
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxfmt": "^0.47.0",
+    "oxlint": "^1.62.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
