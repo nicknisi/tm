@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/nicknisi/tm/compare/v0.3.0...v0.4.0) (2026-05-26)
+
+
+### Features
+
+* add Ctrl+HJKL navigation and improve no-sessions UX ([b0cbe0d](https://github.com/nicknisi/tm/commit/b0cbe0da939d29fce086e89eb64684664679ca67))
+
 ## [0.3.0](https://github.com/nicknisi/tm/compare/v0.2.1...v0.3.0) (2026-05-23)
 
 
