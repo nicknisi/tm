@@ -149,6 +149,72 @@ describe('handleKey - tab toggles view mode', () => {
   });
 });
 
+describe('handleKey - Ctrl+HJKL navigation', () => {
+  test('Ctrl-H moves left', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);
+    app.selectedIndex = 1;
+    handleKey(app, ctrl('h'), 3);
+    expect(app.selectedIndex).toBe(0);
+  });
+
+  test('Ctrl-L moves right', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);
+    handleKey(app, ctrl('l'), 3);
+    expect(app.selectedIndex).toBe(1);
+  });
+
+  test('Ctrl-J moves down', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c'), makeSession('d')], null);
+    handleKey(app, ctrl('j'), 2);
+    expect(app.selectedIndex).toBe(2);
+  });
+
+  test('Ctrl-K moves up', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c'), makeSession('d')], null);
+    app.selectedIndex = 2;
+    handleKey(app, ctrl('k'), 2);
+    expect(app.selectedIndex).toBe(0);
+  });
+
+  test('Ctrl+HJKL works in search mode for navigation', () => {
+    const app = new App([makeSession('alpha'), makeSession('also'), makeSession('ant')], null);
+    app.startSearch();
+    app.pushSearchChar('a');
+    handleKey(app, ctrl('j'), 1);
+    expect(app.selectedIndex).toBe(1);
+    expect(app.isSearching()).toBe(true);
+  });
+
+  test('Ctrl-H is clamped at row start', () => {
+    const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);
+    app.selectedIndex = 0;
+    handleKey(app, ctrl('h'), 3);
+    expect(app.selectedIndex).toBe(0);
+  });
+});
+
+describe('parseKeyEvent - Ctrl+H/J disambiguation', () => {
+  test('0x08 parses as Ctrl-H, not backspace', () => {
+    const event = parseKeyEvent(Buffer.from([0x08]));
+    expect(event).toEqual({ type: 'ctrl', char: 'h' });
+  });
+
+  test('0x7f still parses as backspace', () => {
+    const event = parseKeyEvent(Buffer.from([0x7f]));
+    expect(event).toEqual({ type: 'backspace' });
+  });
+
+  test('0x0a parses as Ctrl-J, not enter', () => {
+    const event = parseKeyEvent(Buffer.from([0x0a]));
+    expect(event).toEqual({ type: 'ctrl', char: 'j' });
+  });
+
+  test('0x0d still parses as enter', () => {
+    const event = parseKeyEvent(Buffer.from([0x0d]));
+    expect(event).toEqual({ type: 'enter' });
+  });
+});
+
 describe('handleKey - list mode navigation', () => {
   test('up/down in list mode navigates one at a time', () => {
     const app = new App([makeSession('a'), makeSession('b'), makeSession('c')], null);

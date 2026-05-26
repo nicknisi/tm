@@ -59,7 +59,7 @@ export function render(app: App, termSize: TerminalSize): string {
   if (app.error) {
     out.push(renderCenteredMessage(contentArea, app.error));
   } else if (app.sessions.length === 0 && !app.isCreateMode()) {
-    out.push(renderCenteredMessage(contentArea, 'No tmux sessions found.\nPress Esc or Ctrl-C to quit.'));
+    out.push(renderCenteredMessage(contentArea, 'No tmux sessions found.\nType a name to create one.'));
   } else if (app.isCreateMode()) {
     if (app.viewMode === 'list') {
       out.push(renderListView(app, contentArea));
@@ -88,7 +88,7 @@ export function render(app: App, termSize: TerminalSize): string {
   }
 
   out.push(moveCursor(rows, 1));
-  out.push(renderFooter(app.searchText(), cols, app.viewMode));
+  out.push(renderFooter(app.searchText(), cols, app.viewMode, app.sessions.length > 0));
   return out.join('');
 }
 
@@ -358,20 +358,28 @@ function buildInteriorLines(session: Session, innerWidth: number, contentHeight:
   return lines.slice(0, contentHeight);
 }
 
-export function renderFooter(searchText: string | null, cols: number, viewMode: ViewMode = 'grid'): string {
+export function renderFooter(
+  searchText: string | null,
+  cols: number,
+  viewMode: ViewMode = 'grid',
+  hasSessions: boolean = true,
+): string {
   const parts: string[] = [];
   const modeLabel = viewMode === 'grid' ? 'list' : 'grid';
   if (searchText !== null) {
     parts.push(`${C.cyan}Search: ${searchText}${C.reset}`);
     parts.push(`${C.gray} · ${C.reset}`);
-    parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
+    parts.push(`${C.yellowBold}↑↓←→/C-hjkl${C.reset}${C.gray} move · ${C.reset}`);
     parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch/create · ${C.reset}`);
     parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
     parts.push(`${C.yellowBold}Tab${C.reset}${C.gray} ${modeLabel} · ${C.reset}`);
     parts.push(`${C.yellowBold}Esc${C.reset}${C.gray} clear${C.reset}`);
+  } else if (!hasSessions) {
+    parts.push(`${C.gray}type a name to create · ${C.reset}`);
+    parts.push(`${C.yellowBold}Esc/Ctrl-C${C.reset}${C.gray} quit${C.reset}`);
   } else {
     parts.push(`${C.gray}type to filter · ${C.reset}`);
-    parts.push(`${C.yellowBold}↑/↓/←/→${C.reset}${C.gray} move · ${C.reset}`);
+    parts.push(`${C.yellowBold}↑↓←→/C-hjkl${C.reset}${C.gray} move · ${C.reset}`);
     parts.push(`${C.yellowBold}Enter${C.reset}${C.gray} switch · ${C.reset}`);
     parts.push(`${C.yellowBold}Ctrl-D${C.reset}${C.gray} kill · ${C.reset}`);
     parts.push(`${C.yellowBold}Tab${C.reset}${C.gray} ${modeLabel} · ${C.reset}`);

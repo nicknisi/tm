@@ -64,7 +64,7 @@ Then press `prefix + s` to open the switcher.
 
 | Key                | Action                                   |
 | ------------------ | ---------------------------------------- |
-| Arrow keys         | Move selection                           |
+| Arrow keys / Ctrl-HJKL | Move selection                        |
 | Type any character | Live-filter sessions by name             |
 | Backspace          | Delete a filter character                |
 | Enter              | Switch to selected session (or create)   |

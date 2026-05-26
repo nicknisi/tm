@@ -41,7 +41,7 @@ function handleCliFlags(argv: string[]): number | null {
         '  tm --help, -h     Show this help and exit',
         '',
         'Keybindings (inside the TUI):',
-        '  Arrows            Move selection',
+        '  Arrows / Ctrl-HJKL Move selection',
         '  Type to filter    Live search by session name',
         '  Backspace         Delete a filter character',
         '  Enter             Switch (or create) the session',

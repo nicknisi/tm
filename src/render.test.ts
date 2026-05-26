@@ -81,4 +81,10 @@ describe('renderFooter with viewMode', () => {
     const output = renderFooter('foo', 120, 'grid');
     expect(output).toContain('Tab');
   });
+
+  test('shows create hint when no sessions', () => {
+    const output = renderFooter(null, 120, 'grid', false);
+    expect(output).toContain('create');
+    expect(output).not.toContain('filter');
+  });
 });

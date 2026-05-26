@@ -27,10 +27,10 @@ export function parseKeyEvent(data: Buffer): KeyEvent {
     return { type: 'escape' };
   }
 
-  // Enter (CR or LF)
-  if (first === 0x0d || first === 0x0a) return { type: 'enter' };
-  // Backspace / DEL
-  if (first === 0x7f || first === 0x08) return { type: 'backspace' };
+  // Enter (CR only — 0x0A/LF is Ctrl-J, handled below)
+  if (first === 0x0d) return { type: 'enter' };
+  // Backspace (DEL only — 0x08/BS is Ctrl-H, handled below)
+  if (first === 0x7f) return { type: 'backspace' };
   if (first === 0x09) return { type: 'tab' };
 
   // Control characters (Ctrl-A..Ctrl-Z except CR/LF/Tab/BS handled above)
@@ -75,6 +75,24 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
     return;
   }
 
+  // Ctrl+HJKL navigation (vim-style).
+  if (key.type === 'ctrl') {
+    switch (key.char) {
+      case 'h':
+        moveLeftClamped(app, columns);
+        return;
+      case 'j':
+        app.moveDown(columns);
+        return;
+      case 'k':
+        app.moveUp(columns);
+        return;
+      case 'l':
+        moveRightClamped(app, columns);
+        return;
+    }
+  }
+
   if (app.isSearching()) {
     handleSearchKey(app, key, columns);
     return;
@@ -116,6 +134,25 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
 }
 
 function handleSearchKey(app: App, key: KeyEvent, columns: number): void {
+  // Ctrl+HJKL navigation works in search mode too (handled before the
+  // switch so it takes priority over the default ctrl fallthrough).
+  if (key.type === 'ctrl') {
+    switch (key.char) {
+      case 'h':
+        moveLeftClamped(app, columns);
+        return;
+      case 'j':
+        app.moveDown(columns);
+        return;
+      case 'k':
+        app.moveUp(columns);
+        return;
+      case 'l':
+        moveRightClamped(app, columns);
+        return;
+    }
+  }
+
   switch (key.type) {
     case 'escape':
       if (app.searchText() === '') {
