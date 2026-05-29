@@ -65,11 +65,18 @@ async function main(): Promise<number> {
   let currentName: string | null = null;
   let currentId: string | null = null;
   let app: App;
-  try {
-    currentName = getCurrentSessionName();
-    currentId = getCurrentSessionId();
-  } catch {
-    // Tmux not running — fall through with empty sessions/error.
+  // Only ask tmux for the "current" session when we're actually inside a tmux
+  // client. The $TMUX env var is the canonical signal — `tmux display-message`
+  // happily reports the most-recently-active session even when no client is
+  // attached, which would make us wrongly think we're inside tmux and try to
+  // switch-client (failing with "no current client") instead of attaching.
+  if (process.env.TMUX) {
+    try {
+      currentName = getCurrentSessionName();
+      currentId = getCurrentSessionId();
+    } catch {
+      // Tmux not running — fall through with empty sessions/error.
+    }
   }
 
   try {
@@ -119,7 +126,14 @@ async function main(): Promise<number> {
     }
     try {
       restore();
-      switchClient(session.id);
+      if (currentId !== null) {
+        // Inside tmux: switch the current client to the target session.
+        switchClient(session.id);
+      } else {
+        // Outside tmux: attach to the target session (switch-client has no
+        // client to act on when we're not already inside tmux).
+        attachSession(session.id);
+      }
       return true;
     } catch (err) {
       app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
