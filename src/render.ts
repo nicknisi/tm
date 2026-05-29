@@ -138,7 +138,7 @@ export function renderListView(app: App, area: Rect): string {
         const titleLen = visibleLength(title);
         if (titleLen < previewWidth) out.push(' '.repeat(previewWidth - titleLen));
       } else if (previewSession && row === 1) {
-        out.push(`${C.gray}${('─').repeat(previewWidth)}${C.reset}`);
+        out.push(`${C.gray}${'─'.repeat(previewWidth)}${C.reset}`);
       } else if (previewSession && row >= 2) {
         const previewLine = row - 2;
         if (previewSession.previewError !== null) {

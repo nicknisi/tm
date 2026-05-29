@@ -62,17 +62,17 @@ Then press `prefix + s` to open the switcher.
 
 ### Keybindings
 
-| Key                | Action                                   |
-| ------------------ | ---------------------------------------- |
-| Arrow keys / Ctrl-HJKL | Move selection                        |
-| Type any character | Live-filter sessions by name             |
-| Backspace          | Delete a filter character                |
-| Enter              | Switch to selected session (or create)   |
-| Tab                | Toggle between grid and list view        |
-| Mouse click        | Switch to the clicked session            |
-| Ctrl-D             | Kill the selected session                |
-| Esc                | Clear filter, or quit if filter is empty |
-| Ctrl-C             | Quit                                     |
+| Key                    | Action                                   |
+| ---------------------- | ---------------------------------------- |
+| Arrow keys / Ctrl-HJKL | Move selection                           |
+| Type any character     | Live-filter sessions by name             |
+| Backspace              | Delete a filter character                |
+| Enter                  | Switch to selected session (or create)   |
+| Tab                    | Toggle between grid and list view        |
+| Mouse click            | Switch to the clicked session            |
+| Ctrl-D                 | Kill the selected session                |
+| Esc                    | Clear filter, or quit if filter is empty |
+| Ctrl-C                 | Quit                                     |
 
 ## How it works
 
