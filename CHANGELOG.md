@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/nicknisi/tm/compare/v0.4.0...v0.4.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* attach to session when running outside tmux ([23f6a4b](https://github.com/nicknisi/tm/commit/23f6a4b69465c6f07c77b5a26c811e4655c8c514))
+
 ## [0.4.0](https://github.com/nicknisi/tm/compare/v0.3.0...v0.4.0) (2026-05-26)
 
 
