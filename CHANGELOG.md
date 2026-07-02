@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/nicknisi/tm/compare/v0.4.1...v0.4.2) (2026-07-02)
+
+
+### Bug Fixes
+
+* friendly welcome screen when no tmux server is running ([#6](https://github.com/nicknisi/tm/issues/6)) ([09703a0](https://github.com/nicknisi/tm/commit/09703a0a869744708102e54e40d4650839c185aa))
+
 ## [0.4.1](https://github.com/nicknisi/tm/compare/v0.4.0...v0.4.1) (2026-05-29)
 
 
