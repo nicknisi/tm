@@ -41,7 +41,7 @@ to the create-card flow itself.
 New exported helper:
 
 ```ts
-export function isNoServerError(stderr: string): boolean
+export function isNoServerError(stderr: string): boolean;
 ```
 
 Returns true when stderr matches `/no server running|error connecting to/`
@@ -78,7 +78,7 @@ already covers the key hints; unchanged.
   This lives in `input.ts` because that is the tested pure state layer.
 - `render.ts` owns the hint line: error screen renders the message plus
   `Press any key to continue · Esc/Ctrl-C quits`. The six `\n\nPress Esc or
-  Ctrl-C to quit.` template suffixes in `index.ts` are removed — `app.error`
+Ctrl-C to quit.` template suffixes in `index.ts` are removed — `app.error`
   holds only the message.
 - `index.ts`: when a key dismisses the error, call `refreshSessions()` so the list
   is current immediately (the 500 ms poll would otherwise leave a stale flash).

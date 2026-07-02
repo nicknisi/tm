@@ -23,10 +23,12 @@
 ### Task 1: Treat "no server" as zero sessions
 
 **Files:**
+
 - Create: `src/tmux.test.ts`
 - Modify: `src/tmux.ts:82-91` (`listSessions`), add exported helper above it
 
 **Interfaces:**
+
 - Produces: `isNoServerError(stderr: string): boolean` (exported from `src/tmux.ts`); `listSessions()` now returns `[]` when the tmux server is not running.
 
 - [ ] **Step 1: Write the failing test**
@@ -39,9 +41,7 @@ import { isNoServerError } from './tmux.ts';
 
 describe('isNoServerError', () => {
   test('matches "error connecting to" (tmux 3.x)', () => {
-    expect(isNoServerError('error connecting to /private/tmp/tmux-501/default (No such file or directory)')).toBe(
-      true,
-    );
+    expect(isNoServerError('error connecting to /private/tmp/tmux-501/default (No such file or directory)')).toBe(true);
   });
 
   test('matches "no server running" (other tmux versions)', () => {
@@ -105,10 +105,12 @@ git commit -m "fix: treat missing tmux server as zero sessions, not an error"
 ### Task 2: Welcome screen for the empty state
 
 **Files:**
+
 - Modify: `src/render.ts:59-62` (empty branch), `src/render.ts:392-407` (`renderCenteredMessage`), add `renderCenteredLines` + `renderWelcome`
 - Test: `src/render.test.ts` (new describe block; also add `render` to the existing import)
 
 **Interfaces:**
+
 - Consumes: nothing from Task 1 (pure rendering).
 - Produces: `renderWelcome(area: Rect): string` and private `renderCenteredLines(area: Rect, lines: string[]): string` in `src/render.ts`. Task 3 reuses `renderCenteredLines` for the error screen.
 
@@ -213,10 +215,12 @@ git commit -m "feat: styled welcome screen when no sessions exist"
 ### Task 3: Dismissible error states
 
 **Files:**
+
 - Modify: `src/input.ts:59-71` (top of `handleKey`), `src/render.ts:59-60` (error branch), `index.ts:87,139,158,176,193,202` (drop suffix templates), `index.ts:261-268` (refresh after dismissal)
 - Test: `src/input.test.ts`, `src/render.test.ts`
 
 **Interfaces:**
+
 - Consumes: `renderCenteredLines(area, lines)` from Task 2.
 - Produces: behavior only — `handleKey` clears `app.error` on any key except Esc/Ctrl-C (which quit); `app.error` now holds only the message, no "Press Esc…" suffix.
 
@@ -283,15 +287,15 @@ Expected: FAIL — `handleKey` treats 'j' as a filter char (search starts, error
 `src/input.ts` — insert into `handleKey` after the Ctrl-C block (line 64) and before the Ctrl-D block:
 
 ```ts
-  // An on-screen error: Esc quits, any other key dismisses it (consumed).
-  if (app.error !== null) {
-    if (key.type === 'escape') {
-      app.shouldQuit = true;
-      return;
-    }
-    app.error = null;
+// An on-screen error: Esc quits, any other key dismisses it (consumed).
+if (app.error !== null) {
+  if (key.type === 'escape') {
+    app.shouldQuit = true;
     return;
   }
+  app.error = null;
+  return;
+}
 ```
 
 `src/render.ts` — replace the error branch in `render()` (lines 59-60):
@@ -312,30 +316,30 @@ Expected: FAIL — `handleKey` treats 'j' as a filter char (search starts, error
 Line 87 (and identically 139, 158, 176, 202):
 
 ```ts
-      app.error = err instanceof Error ? err.message : String(err);
+app.error = err instanceof Error ? err.message : String(err);
 ```
 
 Line 193:
 
 ```ts
-      app.error = 'Cannot kill the current session (running tm).';
+app.error = 'Cannot kill the current session (running tm).';
 ```
 
 `index.ts` — in `handleInput`, refresh immediately when a key dismissed the error (replace the key-handling tail, currently lines 261-268):
 
 ```ts
-      const key = parseKeyEvent(buf);
-      const hadError = app.error !== null;
-      if (app.viewMode === 'list') {
-        handleKey(app, key, 1);
-      } else {
-        const grid = calculateGrid(contentArea, app.visibleSessionCount());
-        handleKey(app, key, grid.columns);
-      }
-      if (hadError && app.error === null) {
-        refreshSessions();
-      }
-      needsRender = true;
+const key = parseKeyEvent(buf);
+const hadError = app.error !== null;
+if (app.viewMode === 'list') {
+  handleKey(app, key, 1);
+} else {
+  const grid = calculateGrid(contentArea, app.visibleSessionCount());
+  handleKey(app, key, grid.columns);
+}
+if (hadError && app.error === null) {
+  refreshSessions();
+}
+needsRender = true;
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**

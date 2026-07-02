@@ -3,9 +3,7 @@ import { isNoServerError } from './tmux.ts';
 
 describe('isNoServerError', () => {
   test('matches "error connecting to" (tmux 3.x)', () => {
-    expect(isNoServerError('error connecting to /private/tmp/tmux-501/default (No such file or directory)')).toBe(
-      true,
-    );
+    expect(isNoServerError('error connecting to /private/tmp/tmux-501/default (No such file or directory)')).toBe(true);
   });
 
   test('matches "no server running" (other tmux versions)', () => {
