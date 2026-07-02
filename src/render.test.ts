@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { disableColors } from './colors.ts';
 import { App } from './model.ts';
-import { renderFooter, renderListView } from './render.ts';
+import { render, renderFooter, renderListView } from './render.ts';
 import type { Rect, Session } from './types.ts';
 
 disableColors();
@@ -86,5 +86,24 @@ describe('renderFooter with viewMode', () => {
     const output = renderFooter(null, 120, 'grid', false);
     expect(output).toContain('create');
     expect(output).not.toContain('filter');
+  });
+});
+
+describe('render with no sessions', () => {
+  test('shows welcome screen instead of an error-style message', () => {
+    const app = new App([], null);
+    const output = render(app, { cols: 80, rows: 24 });
+    expect(output).toContain('No sessions running.');
+    expect(output).toContain('Type a name and press Enter');
+    expect(output).toContain('to create your first session.');
+  });
+
+  test('typing still morphs into the create card', () => {
+    const app = new App([], null);
+    app.startSearch();
+    app.pushSearchChar('a');
+    const output = render(app, { cols: 80, rows: 24 });
+    expect(output).toContain('Create:');
+    expect(output).not.toContain('No sessions running.');
   });
 });
