@@ -107,3 +107,13 @@ describe('render with no sessions', () => {
     expect(output).not.toContain('No sessions running.');
   });
 });
+
+describe('render with error', () => {
+  test('shows the message and a dismissal hint', () => {
+    const app = new App([], null);
+    app.error = 'something failed';
+    const output = render(app, { cols: 80, rows: 24 });
+    expect(output).toContain('something failed');
+    expect(output).toContain('Press any key to continue');
+  });
+});

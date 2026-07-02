@@ -57,7 +57,12 @@ export function render(app: App, termSize: TerminalSize): string {
   }
 
   if (app.error) {
-    out.push(renderCenteredMessage(contentArea, app.error));
+    const lines = app.error.split('\n').map((line) => `${C.gray}${line}${C.reset}`);
+    lines.push('');
+    lines.push(
+      `${C.gray}Press any key to continue · ${C.reset}${C.yellowBold}Esc/Ctrl-C${C.reset}${C.gray} quits${C.reset}`,
+    );
+    out.push(renderCenteredLines(contentArea, lines));
   } else if (app.sessions.length === 0 && !app.isCreateMode()) {
     out.push(renderWelcome(contentArea));
   } else if (app.isCreateMode()) {
