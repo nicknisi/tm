@@ -57,9 +57,14 @@ export function render(app: App, termSize: TerminalSize): string {
   }
 
   if (app.error) {
-    out.push(renderCenteredMessage(contentArea, app.error));
+    const lines = app.error.split('\n').map((line) => `${C.gray}${line}${C.reset}`);
+    lines.push('');
+    lines.push(
+      `${C.gray}Press any key to continue · ${C.reset}${C.yellowBold}Esc/Ctrl-C${C.reset}${C.gray} quits${C.reset}`,
+    );
+    out.push(renderCenteredLines(contentArea, lines));
   } else if (app.sessions.length === 0 && !app.isCreateMode()) {
-    out.push(renderCenteredMessage(contentArea, 'No tmux sessions found.\nType a name to create one.'));
+    out.push(renderWelcome(contentArea));
   } else if (app.isCreateMode()) {
     if (app.viewMode === 'list') {
       out.push(renderListView(app, contentArea));
@@ -389,21 +394,36 @@ export function renderFooter(
   return truncateAnsi(joined, cols);
 }
 
-function renderCenteredMessage(area: Rect, message: string): string {
-  const lines = message.split('\n');
+function renderCenteredLines(area: Rect, lines: string[]): string {
   const out: string[] = [];
   const startRow = area.y + Math.max(0, Math.floor((area.height - lines.length) / 2));
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i]!;
-    const truncated = truncate(line, area.width);
+    const truncated = truncateAnsi(lines[i]!, area.width);
     const len = visibleLength(truncated);
     const startCol = area.x + Math.max(0, Math.floor((area.width - len) / 2));
     out.push(moveCursor(startRow + i + 1, startCol + 1));
-    out.push(C.gray);
     out.push(truncated);
     out.push(C.reset);
   }
   return out.join('');
+}
+
+function renderCenteredMessage(area: Rect, message: string): string {
+  return renderCenteredLines(
+    area,
+    message.split('\n').map((line) => `${C.gray}${line}${C.reset}`),
+  );
+}
+
+export function renderWelcome(area: Rect): string {
+  return renderCenteredLines(area, [
+    `${C.cyanBold}tm${C.reset}`,
+    '',
+    `${C.gray}No sessions running.${C.reset}`,
+    '',
+    `${C.gray}Type a name and press ${C.reset}${C.yellowBold}Enter${C.reset}`,
+    `${C.gray}to create your first session.${C.reset}`,
+  ]);
 }
 
 function truncate(value: string, maxWidth: number): string {

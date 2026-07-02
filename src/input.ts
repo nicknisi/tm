@@ -62,6 +62,15 @@ export function handleKey(app: App, key: KeyEvent, columns: number): void {
     app.shouldQuit = true;
     return;
   }
+  // An on-screen error: Esc quits, any other key dismisses it (consumed).
+  if (app.error !== null) {
+    if (key.type === 'escape') {
+      app.shouldQuit = true;
+      return;
+    }
+    app.error = null;
+    return;
+  }
   // Ctrl-D deletes the selected session (handled by main loop).
   if (key.type === 'ctrl' && key.char === 'd') {
     if (app.selectedSession()) {

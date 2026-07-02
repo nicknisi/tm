@@ -84,7 +84,7 @@ async function main(): Promise<number> {
     app = new App(sessions, currentName);
   } catch (err) {
     app = new App([], currentName);
-    app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+    app.error = err instanceof Error ? err.message : String(err);
   }
 
   enterAlternateScreen();
@@ -136,7 +136,7 @@ async function main(): Promise<number> {
       }
       return true;
     } catch (err) {
-      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      app.error = err instanceof Error ? err.message : String(err);
       app.shouldSwitch = false;
       enterAlternateScreen();
       hideCursor();
@@ -155,7 +155,7 @@ async function main(): Promise<number> {
     try {
       newSession(name);
     } catch (err) {
-      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      app.error = err instanceof Error ? err.message : String(err);
       needsRender = true;
       return false;
     }
@@ -173,7 +173,7 @@ async function main(): Promise<number> {
       }
       return true;
     } catch (err) {
-      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      app.error = err instanceof Error ? err.message : String(err);
       enterAlternateScreen();
       hideCursor();
       enterRawMode();
@@ -190,7 +190,7 @@ async function main(): Promise<number> {
     if (!session) return;
     // Refuse to kill the session running tm.
     if (currentId !== null && session.id === currentId) {
-      app.error = `Cannot kill the current session (running tm).\n\nPress Esc or Ctrl-C to quit, or any key to continue.`;
+      app.error = 'Cannot kill the current session (running tm).';
       needsRender = true;
       return;
     }
@@ -199,7 +199,7 @@ async function main(): Promise<number> {
       // After killing, refresh the list immediately.
       refreshSessions();
     } catch (err) {
-      app.error = `${err instanceof Error ? err.message : String(err)}\n\nPress Esc or Ctrl-C to quit.`;
+      app.error = err instanceof Error ? err.message : String(err);
       needsRender = true;
     }
   };
@@ -259,11 +259,15 @@ async function main(): Promise<number> {
       }
 
       const key = parseKeyEvent(buf);
+      const hadError = app.error !== null;
       if (app.viewMode === 'list') {
         handleKey(app, key, 1);
       } else {
         const grid = calculateGrid(contentArea, app.visibleSessionCount());
         handleKey(app, key, grid.columns);
+      }
+      if (hadError && app.error === null) {
+        refreshSessions();
       }
       needsRender = true;
     };

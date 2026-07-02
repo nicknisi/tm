@@ -254,3 +254,36 @@ describe('handleListMouse', () => {
     expect(app.shouldSwitch).toBe(false);
   });
 });
+
+describe('error dismissal', () => {
+  test('any key dismisses an error without side effects', () => {
+    const app = new App([makeSession('dev')], null);
+    app.error = 'boom';
+    handleKey(app, { type: 'char', char: 'j' }, 1);
+    expect(app.error).toBeNull();
+    expect(app.isSearching()).toBe(false);
+    expect(app.shouldQuit).toBe(false);
+  });
+
+  test('escape quits while an error is shown', () => {
+    const app = new App([makeSession('dev')], null);
+    app.error = 'boom';
+    handleKey(app, { type: 'escape' }, 1);
+    expect(app.shouldQuit).toBe(true);
+  });
+
+  test('ctrl-c quits while an error is shown', () => {
+    const app = new App([makeSession('dev')], null);
+    app.error = 'boom';
+    handleKey(app, ctrl('c'), 1);
+    expect(app.shouldQuit).toBe(true);
+  });
+
+  test('ctrl-d is consumed by error dismissal, not delete', () => {
+    const app = new App([makeSession('dev')], null);
+    app.error = 'boom';
+    handleKey(app, ctrl('d'), 1);
+    expect(app.shouldDelete).toBe(false);
+    expect(app.error).toBeNull();
+  });
+});
