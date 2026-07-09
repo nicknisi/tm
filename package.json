@@ -1,6 +1,6 @@
 {
   "name": "tm",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Grid-based tmux session switcher with live pane previews",
   "module": "index.ts",
   "type": "module",
