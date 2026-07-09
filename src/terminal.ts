@@ -7,6 +7,8 @@ const SHOW_CURSOR = '\x1b[?25h';
 const CLEAR_SCREEN = '\x1b[2J\x1b[H';
 const ENABLE_MOUSE = '\x1b[?1000h\x1b[?1006h';
 const DISABLE_MOUSE = '\x1b[?1000l\x1b[?1006l';
+const BEGIN_SYNC = '\x1b[?2026h';
+const END_SYNC = '\x1b[?2026l';
 
 let rawModeActive = false;
 let altScreenActive = false;
@@ -68,6 +70,16 @@ export function disableMouse(): void {
 
 export function moveCursor(row: number, col: number): string {
   return `\x1b[${row};${col}H`;
+}
+
+/**
+ * Write a full frame wrapped in synchronized-update markers (DECSET 2026) so
+ * the terminal presents it atomically instead of painting the mid-frame
+ * cleared state. tmux ≥3.2 and modern emulators honor the markers; terminals
+ * that don't simply ignore them.
+ */
+export function writeFrame(frame: string): void {
+  process.stdout.write(`${BEGIN_SYNC}${frame}${END_SYNC}`);
 }
 
 export function clearScreen(): void {

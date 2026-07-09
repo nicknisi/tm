@@ -153,3 +153,32 @@ export class App {
     this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
   }
 }
+
+/**
+ * Compare two session lists on render-relevant fields only, so callers can
+ * skip repaints when nothing visible changed. `lastActivity` is deliberately
+ * excluded — it ticks on any pane activity even when the captured preview is
+ * identical, and repainting for it would reintroduce needless flicker.
+ */
+export function sessionsEqual(a: Session[], b: Session[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    const x = a[i]!;
+    const y = b[i]!;
+    if (
+      x.id !== y.id ||
+      x.name !== y.name ||
+      x.attached !== y.attached ||
+      x.windowCount !== y.windowCount ||
+      x.currentWindow !== y.currentWindow ||
+      x.previewError !== y.previewError ||
+      x.preview.length !== y.preview.length
+    ) {
+      return false;
+    }
+    for (let j = 0; j < x.preview.length; j += 1) {
+      if (x.preview[j] !== y.preview[j]) return false;
+    }
+  }
+  return true;
+}
