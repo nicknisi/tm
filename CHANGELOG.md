@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/nicknisi/tm/compare/v0.4.2...v0.4.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* eliminate screen flicker in tmux popups ([#8](https://github.com/nicknisi/tm/issues/8)) ([549defa](https://github.com/nicknisi/tm/commit/549defadf9500de42fca41d6ff517440a1eeb67b))
+
 ## [0.4.2](https://github.com/nicknisi/tm/compare/v0.4.1...v0.4.2) (2026-07-02)
 
 
