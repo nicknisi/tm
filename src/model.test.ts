@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { App, fuzzyMatches } from './model.ts';
+import { App, fuzzyMatches, sessionsEqual } from './model.ts';
 import type { Session } from './types.ts';
 
 function makeSession(name: string): Session {
@@ -148,5 +148,35 @@ describe('fuzzyMatches', () => {
 
   test('empty query matches anything', () => {
     expect(fuzzyMatches('anything', '')).toBe(true);
+  });
+});
+
+describe('sessionsEqual', () => {
+  test('equal lists compare equal', () => {
+    const a = [makeSession('dev'), makeSession('logs')];
+    const b = [makeSession('dev'), makeSession('logs')];
+    expect(sessionsEqual(a, b)).toBe(true);
+  });
+
+  test('detects length changes', () => {
+    expect(sessionsEqual([makeSession('dev')], [])).toBe(false);
+  });
+
+  test('detects render-relevant field changes', () => {
+    const a = [makeSession('dev')];
+    const b = [{ ...makeSession('dev'), attached: true }];
+    expect(sessionsEqual(a, b)).toBe(false);
+  });
+
+  test('detects preview content changes', () => {
+    const a = [{ ...makeSession('dev'), preview: ['$ ls'] }];
+    const b = [{ ...makeSession('dev'), preview: ['$ ls -la'] }];
+    expect(sessionsEqual(a, b)).toBe(false);
+  });
+
+  test('ignores lastActivity', () => {
+    const a = [{ ...makeSession('dev'), lastActivity: '100' }];
+    const b = [{ ...makeSession('dev'), lastActivity: '200' }];
+    expect(sessionsEqual(a, b)).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import packageJson from './package.json' with { type: 'json' };
 import { handleKey, handleListMouse, handleMouse, parseKeyEvent } from './src/input.ts';
-import { App } from './src/model.ts';
+import { App, sessionsEqual } from './src/model.ts';
 import { isMouseSequence, parseMouseEvent } from './src/mouse.ts';
 import { render } from './src/render.ts';
 import {
@@ -10,6 +10,7 @@ import {
   getTerminalSize,
   hideCursor,
   restore,
+  writeFrame,
 } from './src/terminal.ts';
 import {
   attachSession,
@@ -100,15 +101,20 @@ async function main(): Promise<number> {
 
   const draw = () => {
     const size = getTerminalSize();
-    process.stdout.write(render(app, size));
+    writeFrame(render(app, size));
   };
 
   const refreshSessions = (): void => {
     if (app.error) return;
     try {
       const sessions = listSessions(currentId);
-      app.replaceSessions(sessions);
-      needsRender = true;
+      // Only repaint when something render-relevant changed — the picker sits
+      // idle most of the time, and a repaint of identical content is what
+      // makes tmux popups flicker.
+      if (!sessionsEqual(app.sessions, sessions)) {
+        app.replaceSessions(sessions);
+        needsRender = true;
+      }
     } catch {
       // Swallow refresh errors silently — next tick may succeed.
     }
