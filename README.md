@@ -95,13 +95,14 @@ bun test                     # Run unit tests
 
 ### Cross-compilation
 
-The release workflow compiles binaries for three platforms:
+The release workflow compiles binaries for four platforms:
 
 | Target                    | Artifact           |
 | ------------------------- | ------------------ |
 | macOS ARM (Apple Silicon) | `tm-darwin-arm64`  |
 | macOS x86_64 (Intel)      | `tm-darwin-x86_64` |
 | Linux x86_64              | `tm-linux-x86_64`  |
+| Linux ARM64 (aarch64)     | `tm-linux-arm64`   |
 
 Binaries are compiled with `bun build --compile --minify` and distributed as `.tar.gz` archives attached to GitHub Releases.
 

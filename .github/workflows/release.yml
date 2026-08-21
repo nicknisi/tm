@@ -37,6 +37,9 @@ jobs:
           - os: ubuntu-latest
             target: bun-linux-x64
             artifact: tm-linux-x86_64
+          - os: ubuntu-latest
+            target: bun-linux-arm64
+            artifact: tm-linux-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -92,18 +95,24 @@ jobs:
           VERSION: ${{ needs.release-please.outputs.tag_name }}
         run: |
           VER="${VERSION#v}"
-          SHA_ARM64=$(shasum -a 256 tm-darwin-arm64.tar.gz | cut -d' ' -f1)
-          SHA_X86_64=$(shasum -a 256 tm-darwin-x86_64.tar.gz | cut -d' ' -f1)
-          SHA_LINUX=$(shasum -a 256 tm-linux-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_DARWIN_ARM64=$(shasum -a 256 tm-darwin-arm64.tar.gz | cut -d' ' -f1)
+          SHA_DARWIN_X86_64=$(shasum -a 256 tm-darwin-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_LINUX_X86_64=$(shasum -a 256 tm-linux-x86_64.tar.gz | cut -d' ' -f1)
+          SHA_LINUX_ARM64=$(shasum -a 256 tm-linux-arm64.tar.gz | cut -d' ' -f1)
           cd tap
           sed -i "s/version \".*\"/version \"${VER}\"/" Formula/tm.rb
           python3 -c "
           import re
           f = 'Formula/tm.rb'
           txt = open(f).read()
-          shas = {'arm64': '${SHA_ARM64}', 'x86_64': '${SHA_X86_64}', 'linux': '${SHA_LINUX}'}
-          for arch, sha in shas.items():
-              txt = re.sub(r'(tm-.*' + arch + r'.*\n\s*sha256 \")([a-fA-F0-9]+|PLACEHOLDER_\w+)(\")', lambda m: m.group(1) + sha + m.group(3), txt)
+          shas = {
+              'tm-darwin-arm64': '${SHA_DARWIN_ARM64}',
+              'tm-darwin-x86_64': '${SHA_DARWIN_X86_64}',
+              'tm-linux-x86_64': '${SHA_LINUX_X86_64}',
+              'tm-linux-arm64': '${SHA_LINUX_ARM64}',
+          }
+          for asset, sha in shas.items():
+              txt = re.sub(r'(' + re.escape(asset) + r'\.tar\.gz\"\n\s*sha256 \")([a-fA-F0-9]+|PLACEHOLDER_\w+)(\")', lambda m: m.group(1) + sha + m.group(3), txt)
           open(f, 'w').write(txt)
           "
 
