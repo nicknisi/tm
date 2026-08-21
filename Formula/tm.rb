@@ -15,8 +15,13 @@ class Tm < Formula
   end
 
   on_linux do
-    url "https://github.com/nicknisi/tm/releases/download/v#{version}/tm-linux-x86_64.tar.gz"
-    sha256 "PLACEHOLDER_LINUX"
+    if Hardware::CPU.arm?
+      url "https://github.com/nicknisi/tm/releases/download/v#{version}/tm-linux-arm64.tar.gz"
+      sha256 "PLACEHOLDER_LINUX_ARM64"
+    else
+      url "https://github.com/nicknisi/tm/releases/download/v#{version}/tm-linux-x86_64.tar.gz"
+      sha256 "PLACEHOLDER_LINUX_X86_64"
+    end
   end
 
   def install
