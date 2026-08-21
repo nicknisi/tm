@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/nicknisi/tm/compare/v0.4.3...v0.4.4) (2026-08-21)
+
+
+### Bug Fixes
+
+* **release:** publish Linux ARM64 binaries ([#10](https://github.com/nicknisi/tm/issues/10)) ([96e07a7](https://github.com/nicknisi/tm/commit/96e07a7ea4cf384888b032c0293c3ee5f7dda8b6))
+
 ## [0.4.3](https://github.com/nicknisi/tm/compare/v0.4.2...v0.4.3) (2026-07-09)
 
 
