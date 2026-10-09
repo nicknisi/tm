@@ -54,6 +54,13 @@ jobs:
       - name: Compile binary
         run: bun build --compile --minify --target=${{ matrix.target }} index.ts --outfile tm
 
+      # bun --compile can emit a Mach-O whose ad-hoc signature no longer matches; macOS SIGKILLs it on launch
+      - name: Ad-hoc sign binary (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          codesign --force --sign - tm
+          codesign --verify --strict -v tm
+
       - name: Package tarball
         run: tar czf ${{ matrix.artifact }}.tar.gz tm
 
