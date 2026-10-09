@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/nicknisi/tm/compare/v0.4.4...v0.4.5) (2026-10-09)
+
+
+### Bug Fixes
+
+* **release:** ad-hoc sign macOS binaries so they aren't killed on launch ([#12](https://github.com/nicknisi/tm/issues/12)) ([d591d46](https://github.com/nicknisi/tm/commit/d591d468dcc74b6956714381e835bd9ffdf9ed5e))
+
 ## [0.4.4](https://github.com/nicknisi/tm/compare/v0.4.3...v0.4.4) (2026-08-21)
 
 
